@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:imageai/constants.dart';
+import 'package:imageai/loading.dart';
+import 'package:imageai/login.dart';
+import 'package:share_plus/share_plus.dart';
 void main() {
   runApp(const MyApp());
 }
@@ -15,7 +18,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Imageing',
+      title: 'ImageIO.ai',
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -32,10 +35,10 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Imageing'),
+      home: const sign(),
     );
   }
 }
@@ -61,7 +64,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   bool _isLoading = false;
-  Uint8List image = Uint8List(0);
+  Uint8List? image = null;
   late TextEditingController _controller;
   void initState() {
     super.initState();
@@ -77,7 +80,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final url = Uri.parse(
         "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image");
 
-
+  print('${Constants.stabilityKey}');
     // Make the HTTP POST request to the Stability Platform API
     final response = await http.post(
       url,  
@@ -101,7 +104,6 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       }),
     );
-    print(response.body);
     setState(() {
       _isLoading = false;
     });
@@ -113,10 +115,12 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
           image = _imageData;
         });
+        
       } on Exception catch (e) {
         _showErrorDialog('Failed to generate image');
       }
     }
+    return;
   }
   void _showErrorDialog(String message) {
     showDialog(
@@ -151,46 +155,52 @@ class _MyHomePageState extends State<MyHomePage> {
         // TRY THIS: Try changing the color here to a specific color (to
         // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
         // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Type the prompt you imagine',
-            ),
-            SizedBox(
-              width: 200,
-              child: TextField(
-                controller: _controller,
-                onSubmitted: (value) {
-                  _getImage(value);
-                },
+          // Center is a layout widget. It takes a single child and positions it
+          // in the middle of the parent.
+          child: Column(
+            // Column is also a layout widget. It takes a list of children and
+            // arranges them vertically. By default, it sizes itself to fit its
+            // children horizontally, and tries to be as tall as its parent.
+            //
+            // Column has various properties to control how it sizes itself and
+            // how it positions its children. Here we use mainAxisAlignment to
+            // center the children vertically; the main axis here is the vertical
+            // axis because Columns are vertical (the cross axis would be
+            // horizontal).
+            //
+            // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
+            // action in the IDE, or press "p" in the console), to see the
+            // wireframe for each widget.
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Text(
+                'Type the prompt you imagine',
               ),
-            ),
-            SizedBox(height:500,width:500,child: Image.memory(image)),
-          ],
+              SizedBox(
+                width: 200,
+                child: TextField(
+                  controller: _controller,
+                  onSubmitted: (value) async {
+                    Loading(context);
+                    await _getImage(value);
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ),image == null?Container():
+              SizedBox(height:500,width:500,child: Image.memory(image??Uint8List(0))),
+              image == null
+                ? Container()
+                : ElevatedButton(onPressed: () {Share.shareXFiles([XFile.fromData(image??Uint8List(0))],text:'Image made using Imageio.ai');},child:Text('Share'))
+           ],
+          ),
         ),
-      ),
+      
        // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
